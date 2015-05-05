@@ -18,21 +18,16 @@
 
 MotorControl::MotorControl( )
   : m_motorPwm( 0 ),
-    m_minRate( 0 ),
+    m_maxPwmValue( 80 ),
     m_targetRate( 8 ),
     m_maxRate( 10 ),
-    m_maxPwmValue( 80 ),
-    m_maxPosition( 10000 ),
     m_desiredPosition( 0 ),
-    m_minPosition( 0 ),
+    m_distRemaining( 0 ),
     m_rate( 0 ),
     m_lastCount( 0 ),
     m_rampRange( 10 ),
     m_direction( FORWARD_DIRECTION ),
     m_scheme( "Bouncer" ),
-    m_slop( 0 ),
-    m_maxAbsRate( 0 ),
-    m_minAbsRate( 0 ),
     m_nextAdjustUs( 0 )
 {
     pinMode( PWM_DIRECTION, OUTPUT );
@@ -53,7 +48,7 @@ void MotorControl::SendToClient(Print& serial)
     
     root.printTo( serial );
     serial.println( );
-    if (1)
+    if (0)
     {
         Serial.print("{\"Debug\":\"");
         Serial.print(" m_distRemaining ");
@@ -62,8 +57,12 @@ void MotorControl::SendToClient(Print& serial)
         Serial.print(m_rampRange);
         Serial.print(" m_lastCount ");
         Serial.print(m_lastCount);
+        Serial.print(" m_maxPwmValue ");
+        Serial.print(m_maxPwmValue);
         Serial.print(" m_desiredPosition ");
         Serial.print(m_desiredPosition);
+        Serial.print(" inramp ");
+        Serial.print(m_distRemaining < m_rampRange);
         Serial.print(" m_maxRate ");
         Serial.print(m_maxRate);
         Serial.print(" m_motorPwm ");
@@ -83,78 +82,57 @@ void MotorControl::UpdateRate( )
 void MotorControl::CheckSpeed( )
 {
     const int32_t currentCount = Encoder::GetEncoder()->GetCount( );
-    bool nearMax = (currentCount < m_desiredPosition) && currentCount > (m_desiredPosition - m_rampRange);
-    bool nearMin = (currentCount > m_desiredPosition) && currentCount < (m_desiredPosition + m_rampRange);
+    m_distRemaining = abs(m_desiredPosition - currentCount);
     
-    if ( ! nearMax && ! nearMin )
+    m_direction = m_desiredPosition > currentCount ? FORWARD_DIRECTION : REVERSE_DIRECTION;
+    
+    bool inRamp = m_distRemaining < m_rampRange;
+    
+    if ( inRamp )
     {
-        AdjustPwm( m_targetRate );
-        
-        return;
+        Damp( );
     }
-    
-    if ( m_rampRange > 0 )
+    else
     {
-        if ( nearMax )
-        {
-            m_distRemaining = float(m_desiredPosition - currentCount) / m_rampRange;
-        }
-        else if ( nearMin )
-        {
-            m_distRemaining = float(currentCount - m_desiredPosition) / m_rampRange;
-        }
+        AdjustPwm( );
     }
-    bool rampDown = ( ( nearMax && m_direction == FORWARD_DIRECTION )
-                     || ( nearMin && m_direction == REVERSE_DIRECTION ) );
+ }
 
-    bool rampUp = ( ( nearMax && m_direction == REVERSE_DIRECTION  )
-                   || ( nearMin && m_direction == FORWARD_DIRECTION ) );
-    
-    
-    uint32_t rate = (float(m_maxRate - m_minRate) * m_distRemaining) + m_minRate;
-    AdjustPwm( rate );
-}
 
-void MotorControl::AdjustPwm( uint32_t targetRate )
+void MotorControl::AdjustPwm( )
 {
-    if (micros() < m_nextAdjustUs)
+    if ( micros( ) < m_nextAdjustUs )
     {
         return;
     }
-    m_nextAdjustUs = micros() + PWM_ADJUST_US;
+    m_nextAdjustUs = micros( ) + PWM_ADJUST_US;
     
-    if ( abs(m_rate) < targetRate && m_motorPwm < m_maxPwmValue )
+    if ( abs(m_rate) < m_targetRate && m_motorPwm < m_maxPwmValue )
     {
         m_motorPwm++;
     }
-    else if ( abs(m_rate) > targetRate && m_motorPwm > 0 )
+    else if ( abs(m_rate) > m_targetRate && m_motorPwm > 0 )
     {
         m_motorPwm--;
     }
-    
+}
+
+
+void MotorControl::Damp( )
+{
+    float distRemaining = m_distRemaining;
+    float rampRange     = m_rampRange;
+    m_motorPwm = float(m_maxPwmValue) * ( distRemaining / rampRange );
 }
 
 
 // Update Frequently
 void MotorControl::UpdateParameters( )
 {
-    CheckDirection( );
     CheckSpeed( );
     UpdateController( );
 }
 
-void MotorControl::CheckDirection( )
-{
-    const int32_t currentCount = Encoder::GetEncoder()->GetCount( );
-    if ( currentCount > m_desiredPosition )
-    {
-        m_direction = REVERSE_DIRECTION;
-    }
-    else if ( currentCount < m_desiredPosition )
-    {
-        m_direction = FORWARD_DIRECTION;
-    }
-}
 
 void MotorControl::UpdateController( )
 {
@@ -169,12 +147,12 @@ const String& MotorControl::GetScheme( ) const
 
 void MotorControl::ReceiveCommand( const JsonObject& root )
 {
-    m_maxPwmValue = root["maxPwmValue"];
-    m_direction = root["direction"] == 0 ? FORWARD_DIRECTION : REVERSE_DIRECTION;
-    m_maxRate = root["maxRate"];
-    m_targetRate = root["targetRate"];
-    m_desiredPosition = root["desiredPosition"];
-    m_rampRange = root["rampRange"];
-    const char* scheme = root["scheme"];
-    m_scheme = scheme;
+    m_maxPwmValue       = root["maxPwmValue"];
+    m_direction         = root["direction"] == 0 ? FORWARD_DIRECTION : REVERSE_DIRECTION;
+    m_maxRate           = root["maxRate"];
+    m_targetRate        = root["targetRate"];
+    m_desiredPosition   = root["desiredPosition"];
+    m_rampRange         = root["rampRange"];
+    const char* scheme  = root["scheme"];
+    m_scheme            = scheme;
 }

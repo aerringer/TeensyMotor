@@ -25,34 +25,29 @@ public:
     MotorControl( );
     void SendToClient(Print& serial);
     void UpdateRate( );
-    void CheckDirection( );
     void CheckSpeed( );
     void UpdateParameters( );
     void UpdateController( );
     void ReceiveCommand( const JsonObject& root );
     const String& GetScheme( ) const;
     void GoToAbsolute( );
-    void AdjustPwm( uint32_t targetRate );
+    void Damp( );
+    void AdjustPwm( );
 
 private:
     uint32_t    m_motorPwm;
-    uint32_t    m_minRate;
-    uint32_t    m_targetRate;
-    uint32_t    m_maxRate;
     uint32_t    m_maxPwmValue;
-    int32_t     m_maxPosition;
+    uint32_t    m_targetRate;
+    int32_t     m_maxRate;
     int32_t     m_desiredPosition;
-    int32_t     m_minPosition;
+    uint32_t    m_distRemaining;
     int32_t     m_rate;
     int32_t     m_lastCount;
-    int32_t     m_rampRange;
+    uint32_t    m_rampRange;
     Direction   m_direction;
     String      m_scheme;
     uint32_t    m_slop;
-    uint32_t    m_maxAbsRate;
-    uint32_t    m_minAbsRate;
     uint32_t    m_nextAdjustUs;
-    float       m_distRemaining;
 };
 
 

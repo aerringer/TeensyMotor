@@ -2,3 +2,11 @@ xcschememanagement.plist
 *.xcuserstate
 WorkspaceSettings.xcsettings
 *.xcbkptlist
+*.d
+*.o
+*.a
+*.eep
+*.elf
+*.hex
+*.
+teensy31-TAG

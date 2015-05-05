@@ -208,8 +208,6 @@ class MotorFrame(wx.Frame):
         self.controlParameters.maxPosition = int(self.maxRotation.GetValue())
         self.controlParameters.minPosition = int(self.minRotation.GetValue())
         self.controlParameters.scheme = self.scheme.GetStringSelection()
-        self.controlParameters.desiredPosition = self.in_slider.GetValue()
-        self.currentControlMessage = self.controlParameters.get_as_json()
         self.in_slider.SetRange(self.controlParameters.minPosition, self.controlParameters.maxPosition)
         self.out_slider.SetRange(self.controlParameters.minPosition, self.controlParameters.maxPosition)
 
@@ -218,6 +216,7 @@ class MotorFrame(wx.Frame):
         val = objectId.GetValue()
         
         self.in_slider_value.SetLabel(str(val))
+        self.controlParameters.desiredPosition = self.in_slider.GetValue()
 
     def OnOutSliderScroll(self, eventId):
         objectId = eventId.GetEventObject()
@@ -310,6 +309,7 @@ class MotorFrame(wx.Frame):
                             self.GetEventHandler().AddPendingEvent(event)
                             text = ""
 
+                            self.currentControlMessage = self.controlParameters.get_as_json()
                             if self.currentControlMessage  != self.lastControlMessage:
                                 self.lastControlMessage = self.currentControlMessage
                                 print "Sending to Teensy", self.currentControlMessage

@@ -21,7 +21,7 @@
 #define     LED_PIN         13
 
 #define     RATE_SAMPLE_MS      1
-#define     CLIENT_POLL_RATE_MS 100
+#define     CLIENT_POLL_RATE_MS 200
 
 
 uint32_t millisecondClock = 0;
@@ -36,7 +36,7 @@ void OneMsClock( )
 //
 void setup( )
 {
-    Serial.begin( 19200 );
+    Serial.begin( 115200 );
     
     analogWriteFrequency(3, 10000);
     
@@ -70,7 +70,7 @@ void loop( )
     {
         motorControl.SendToClient( Serial );
         
-        nextClientPollMs  = millis() + CLIENT_POLL_RATE_MS;
+        nextClientPollMs  = millis( ) + CLIENT_POLL_RATE_MS;
         digitalWrite( LED_PIN, 0 );
     }
     
